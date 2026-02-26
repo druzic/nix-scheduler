@@ -14,6 +14,10 @@ import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 
 export function Scheduler() {
   const [selectedService, setSelectedService] = React.useState("");
@@ -28,11 +32,19 @@ export function Scheduler() {
       time: "10:15",
     },
   ]);
-
-  const clients = [
+  const [clients, setClients] = React.useState([
     { name: "Ana", phoneNumber: "099123456", instaTag: "@ana" },
     { name: "Iva", phoneNumber: "099123456", instaTag: "@iva" },
-  ];
+  ]);
+  const [openDialog, setOpenDialog] = React.useState(false);
+  const [inputValue, setInputValue] = React.useState("");
+  const [newClientForm, setNewClientForm] = React.useState({
+    name: "",
+    phoneNumber: "",
+    instaTag: "",
+  });
+  const addClientButtonRef = React.useRef(null);
+
   const services = [
     {
       name: "Lak",
@@ -59,7 +71,7 @@ export function Scheduler() {
     "19:15",
   ];
 
-  // Resetiraj selectedTime ako je taj slot zauzet na novom datumu
+  // RESETIRANJE SELECT TIME AKO JE ZAUZET ZA TO VRIJEME
   React.useEffect(() => {
     if (selectedTime) {
       const isBooked = appointments.find(
@@ -74,19 +86,77 @@ export function Scheduler() {
     }
   }, [selectedDate, appointments, selectedTime]);
 
+  const handleAddClient = () => {
+    if (!newClientForm.name.trim()) return;
+
+    const newClient = {
+      name: newClientForm.name.trim(),
+      phoneNumber: newClientForm.phoneNumber.trim() || "",
+      instaTag: newClientForm.instaTag.trim() || "",
+    };
+
+    setClients([...clients, newClient]);
+    setSelectedClient(newClient.name);
+    setOpenDialog(false);
+    setNewClientForm({ name: "", phoneNumber: "", instaTag: "" });
+  };
+
+  const handleDialogOpen = () => {
+    setNewClientForm({
+      name: inputValue,
+      phoneNumber: "",
+      instaTag: "",
+    });
+    setOpenDialog(true);
+  };
+
+  const handleDialogClose = () => {
+    setOpenDialog(false);
+    setNewClientForm({ name: "", phoneNumber: "", instaTag: "" });
+  };
+
+  const handleSubmit = () => {
+    try {
+      const newAppointment = {
+        clientName: selectedClient,
+        serviceName: selectedService,
+        date: selectedDate.format("DD-MM-YYYY"),
+        time: selectedTime,
+      };
+      setAppointments([...appointments, newAppointment]);
+      console.log("Radim");
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   return (
-    <div>
+    <Box sx={{ p: 2 }}>
       <h1>Unos termina</h1>
       <div>
-        <Autocomplete
-          freeSolo
-          disablePortal
-          options={clients.map((option) => option.name)}
-          value={selectedClient}
-          onChange={(event, newValue) => setSelectedClient(newValue)}
-          sx={{ width: 300 }}
-          renderInput={(params) => <TextField {...params} label="Ime" />}
-        />
+        <Box sx={{ display: "flex", flexDirection: "row", gap: 1, mb: 2 }}>
+          <Autocomplete
+            freeSolo
+            disablePortal
+            options={clients.map((option) => option.name)}
+            value={selectedClient}
+            inputValue={inputValue}
+            onInputChange={(event, newInputValue) =>
+              setInputValue(newInputValue)
+            }
+            onChange={(event, newValue) => setSelectedClient(newValue)}
+            sx={{ width: 300 }}
+            renderInput={(params) => <TextField {...params} label="Ime" />}
+          />
+          <Button
+            ref={addClientButtonRef}
+            variant="outlined"
+            onClick={handleDialogOpen}
+            sx={{ width: "fit-content" }}
+          >
+            + Novi klijent
+          </Button>
+        </Box>
         <div className="py-3">
           <FormControl fullWidth>
             <InputLabel>Usluga</InputLabel>
@@ -104,11 +174,27 @@ export function Scheduler() {
             </Select>
           </FormControl>
         </div>
-        <DateCalendar
-          value={selectedDate}
-          onChange={(newValue) => setSelectedDate(newValue)}
-          views={["year", "month", "day"]}
-        />
+        <Card
+          variant="outlined"
+          sx={{
+            mt: 3,
+            mb: 2,
+            p: 2,
+            backgroundColor: "#fafafa",
+            borderRadius: 2,
+          }}
+        >
+          <DateCalendar
+            value={selectedDate}
+            onChange={(newValue) => setSelectedDate(newValue)}
+            views={["year", "month", "day"]}
+            sx={{
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+            }}
+          />
+        </Card>
         <p>Odabrano: {selectedDate.format("dddd, DD.MM.YYYY.")}</p>
 
         <Card variant="outlined" sx={{ mt: 2 }}>
@@ -136,6 +222,7 @@ export function Scheduler() {
         <Button
           variant="contained"
           disabled={!selectedClient || !selectedTime || !selectedService}
+          onClick={handleSubmit}
         >
           Spremi
         </Button>
@@ -173,7 +260,7 @@ export function Scheduler() {
             {selectedDate.format("DD.MM.YYYY")}
           </Typography>
         </Box>
-        <Box sx={{ flexGrow: 1, m: 2 }}>
+        <Box sx={{ flexGrow: 1, m: 1 }}>
           <Grid container spacing={1}>
             {timeSlots.map((time) => {
               const existingAppointment = appointments.find(
@@ -202,7 +289,9 @@ export function Scheduler() {
                     <strong>{time}</strong>
                     <p>
                       {existingAppointment
-                        ? existingAppointment.clientName
+                        ? existingAppointment.clientName +
+                          " - " +
+                          existingAppointment.serviceName
                         : "Slobodno"}
                     </p>
                   </Paper>
@@ -212,6 +301,61 @@ export function Scheduler() {
           </Grid>
         </Box>
       </div>
-    </div>
+
+      <Dialog
+        open={openDialog}
+        onClose={handleDialogClose}
+        maxWidth="sm"
+        fullWidth
+        disableRestoreFocus
+      >
+        <DialogTitle>Dodaj novog klijenta</DialogTitle>
+        <DialogContent
+          sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          <TextField
+            autoFocus
+            label="Ime *"
+            fullWidth
+            value={newClientForm.name}
+            onChange={(e) =>
+              setNewClientForm({ ...newClientForm, name: e.target.value })
+            }
+            placeholder="Unesite ime klijenta"
+          />
+          <TextField
+            label="Broj telefona"
+            fullWidth
+            value={newClientForm.phoneNumber}
+            onChange={(e) =>
+              setNewClientForm({
+                ...newClientForm,
+                phoneNumber: e.target.value,
+              })
+            }
+            placeholder="Npr. 099123456"
+          />
+          <TextField
+            label="Instagram tag"
+            fullWidth
+            value={newClientForm.instaTag}
+            onChange={(e) =>
+              setNewClientForm({ ...newClientForm, instaTag: e.target.value })
+            }
+            placeholder="Npr. @username"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDialogClose}>Otkaži</Button>
+          <Button
+            onClick={handleAddClient}
+            variant="contained"
+            disabled={!newClientForm.name.trim()}
+          >
+            Dodaj
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
