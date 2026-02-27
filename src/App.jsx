@@ -1,6 +1,8 @@
 import "./App.css";
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Scheduler } from "./pages/Scheduler";
+import { Login } from "./pages/Login";
+import { PrivateRoute } from "./components/PrivateRoute";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -23,7 +25,15 @@ function App() {
       <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="hr">
         <Router>
           <Routes>
-            <Route path="/" element={<Scheduler />} />
+            <Route
+              path="/scheduler"
+              element={
+                <PrivateRoute>
+                  <Scheduler />
+                </PrivateRoute>
+              }
+            />
+            <Route path="/" element={<Login />} />
           </Routes>
         </Router>
       </LocalizationProvider>

@@ -18,24 +18,14 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import { supabase } from "../utils/supabase";
 
 export function Scheduler() {
   const [selectedService, setSelectedService] = React.useState("");
   const [selectedDate, setSelectedDate] = React.useState(dayjs(new Date()));
   const [selectedClient, setSelectedClient] = React.useState("");
   const [selectedTime, setSelectedTime] = React.useState("");
-  const [appointments, setAppointments] = React.useState([
-    {
-      clientName: "Ana",
-      serviceName: "Lak",
-      date: dayjs().format("DD-MM-YYYY"),
-      time: "10:15",
-    },
-  ]);
-  const [clients, setClients] = React.useState([
-    { name: "Ana", phoneNumber: "099123456", instaTag: "@ana" },
-    { name: "Iva", phoneNumber: "099123456", instaTag: "@iva" },
-  ]);
+  const [appointments, setAppointments] = React.useState([]);
   const [openDialog, setOpenDialog] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
   const [newClientForm, setNewClientForm] = React.useState({
@@ -43,6 +33,7 @@ export function Scheduler() {
     phoneNumber: "",
     instaTag: "",
   });
+  const [clients, setClients] = React.useState([]);
   const addClientButtonRef = React.useRef(null);
 
   const services = [
@@ -70,9 +61,13 @@ export function Scheduler() {
     "18:30",
     "19:15",
   ];
-
+  async function getClients() {
+    const { data } = await supabase.from("clients").select();
+    setClients(data);
+  }
   // RESETIRANJE SELECT TIME AKO JE ZAUZET ZA TO VRIJEME
   React.useEffect(() => {
+    getClients();
     if (selectedTime) {
       const isBooked = appointments.find(
         (app) =>
@@ -86,7 +81,7 @@ export function Scheduler() {
     }
   }, [selectedDate, appointments, selectedTime]);
 
-  const handleAddClient = () => {
+  const handleAddClient = async () => {
     if (!newClientForm.name.trim()) return;
 
     const newClient = {
@@ -94,6 +89,15 @@ export function Scheduler() {
       phoneNumber: newClientForm.phoneNumber.trim() || "",
       instaTag: newClientForm.instaTag.trim() || "",
     };
+
+    const { data, error } = await supabase
+      .from("clients")
+      .insert({
+        name: newClient.name,
+        phone_number: newClient.phoneNumber,
+        insta_tag: newClient.instaTag,
+      })
+      .select();
 
     setClients([...clients, newClient]);
     setSelectedClient(newClient.name);
