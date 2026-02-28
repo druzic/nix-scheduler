@@ -65,9 +65,14 @@ export function Scheduler() {
     const { data } = await supabase.from("clients").select();
     setClients(data);
   }
+  async function getAppointments() {
+    const { data } = await supabase.from("appointments").select();
+    setAppointments(data);
+  }
   // RESETIRANJE SELECT TIME AKO JE ZAUZET ZA TO VRIJEME
   React.useEffect(() => {
     getClients();
+    getAppointments();
     if (selectedTime) {
       const isBooked = appointments.find(
         (app) =>
@@ -97,10 +102,17 @@ export function Scheduler() {
         phone_number: newClient.phoneNumber,
         insta_tag: newClient.instaTag,
       })
-      .select();
+      .select()
+      .single();
 
-    setClients([...clients, newClient]);
-    setSelectedClient(newClient.name);
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setClients([...clients, data]);
+    console.log(data);
+    setSelectedClient(data.id);
     setOpenDialog(false);
     setNewClientForm({ name: "", phoneNumber: "", instaTag: "" });
   };
@@ -119,16 +131,30 @@ export function Scheduler() {
     setNewClientForm({ name: "", phoneNumber: "", instaTag: "" });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     try {
+      const clientName =
+        clients.find((c) => c.id === selectedClient)?.name || "";
+
       const newAppointment = {
-        clientName: selectedClient,
+        clientID: selectedClient,
         serviceName: selectedService,
         date: selectedDate.format("DD-MM-YYYY"),
         time: selectedTime,
       };
-      setAppointments([...appointments, newAppointment]);
-      console.log("Radim");
+
+      const { data, error } = await supabase
+        .from("appointments")
+        .insert({
+          client_id: newAppointment.clientID,
+          service_name: newAppointment.serviceName,
+          date: newAppointment.date,
+          time: newAppointment.time,
+        })
+        .select()
+        .single();
+      setAppointments([...appointments, data]);
+      console.log(data);
     } catch (error) {
       console.log(error);
     }
@@ -142,13 +168,16 @@ export function Scheduler() {
           <Autocomplete
             freeSolo
             disablePortal
-            options={clients.map((option) => option.name)}
-            value={selectedClient}
+            options={clients}
+            getOptionLabel={(option) => option.name || ""}
+            value={clients.find((c) => c.id === selectedClient) || null}
             inputValue={inputValue}
             onInputChange={(event, newInputValue) =>
               setInputValue(newInputValue)
             }
-            onChange={(event, newValue) => setSelectedClient(newValue)}
+            onChange={(event, newValue) =>
+              setSelectedClient(newValue?.id || "")
+            }
             sx={{ width: 300 }}
             renderInput={(params) => <TextField {...params} label="Ime" />}
           />
@@ -207,7 +236,8 @@ export function Scheduler() {
               Trenutni odabir
             </Typography>
             <Typography variant="body2">
-              <strong>Klijent:</strong> {selectedClient || "—"}
+              <strong>Klijent:</strong>{" "}
+              {clients.find((c) => c.id === selectedClient)?.name || "—"}
             </Typography>
             <Typography variant="body2">
               <strong>Datum:</strong>{" "}
@@ -293,9 +323,11 @@ export function Scheduler() {
                     <strong>{time}</strong>
                     <p>
                       {existingAppointment
-                        ? existingAppointment.clientName +
+                        ? clients.find(
+                            (c) => c.id === existingAppointment.client_id,
+                          )?.name +
                           " - " +
-                          existingAppointment.serviceName
+                          existingAppointment.service_name
                         : "Slobodno"}
                     </p>
                   </Paper>
