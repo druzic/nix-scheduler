@@ -18,6 +18,7 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { supabase } from "../utils/supabase";
 
 export function Scheduler() {
@@ -27,12 +28,19 @@ export function Scheduler() {
   const [selectedTime, setSelectedTime] = React.useState("");
   const [appointments, setAppointments] = React.useState([]);
   const [openDialog, setOpenDialog] = React.useState(false);
+  const [openAppointmentDialog, setAppointmentOpenDialog] =
+    React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
   const [newClientForm, setNewClientForm] = React.useState({
     name: "",
     phoneNumber: "",
     instaTag: "",
   });
+  const [appointmentDate, setAppointmentDate] = React.useState(
+    dayjs(new Date()),
+  );
+  const [appointmentTime, setAppointmentTime] = React.useState("");
+  const [selectedAppointment, setSelectedAppointment] = React.useState(null);
   const [clients, setClients] = React.useState([]);
   const addClientButtonRef = React.useRef(null);
 
@@ -131,6 +139,38 @@ export function Scheduler() {
     setNewClientForm({ name: "", phoneNumber: "", instaTag: "" });
   };
 
+  const handleAppointmentDialogOpen = (appointment) => {
+    setSelectedAppointment(appointment);
+    const client = clients.find((c) => c.id === appointment.client_id);
+    setNewClientForm({
+      ...newClientForm,
+      name: client?.name || "",
+    });
+    setAppointmentDate(dayjs(appointment.date, "DD-MM-YYYY"));
+    setAppointmentTime(appointment.time);
+    setAppointmentOpenDialog(true);
+  };
+
+  const handleAppointmentDialogClose = () => {
+    setAppointmentOpenDialog(false);
+    setAppointmentDate(dayjs(new Date()));
+    setAppointmentTime("");
+    setSelectedAppointment(null);
+  };
+
+  const getAvailableTimeSlotsForDate = (date, currentAppointment = null) => {
+    return timeSlots.filter((time) => {
+      const isBooked = appointments.find(
+        (app) => app.time === time && app.date === date.format("DD-MM-YYYY"),
+      );
+
+      if (currentAppointment && time === currentAppointment.time) {
+        return true;
+      }
+      return !isBooked;
+    });
+  };
+
   const handleSubmit = async () => {
     try {
       const clientName =
@@ -158,6 +198,10 @@ export function Scheduler() {
     } catch (error) {
       console.log(error);
     }
+  };
+
+  const handleEditAppointment = async () => {
+    console.log("Radim update");
   };
 
   return (
@@ -317,6 +361,8 @@ export function Scheduler() {
                     onClick={() => {
                       if (!existingAppointment) {
                         setSelectedTime(time);
+                      } else {
+                        handleAppointmentDialogOpen(existingAppointment);
                       }
                     }}
                   >
@@ -385,6 +431,66 @@ export function Scheduler() {
           <Button onClick={handleDialogClose}>Otkaži</Button>
           <Button
             onClick={handleAddClient}
+            variant="contained"
+            disabled={!newClientForm.name.trim()}
+          >
+            Dodaj
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openAppointmentDialog}
+        onClose={handleAppointmentDialogClose}
+        maxWidth="sm"
+        fullWidth
+        disableRestoreFocus
+      >
+        <DialogTitle>Uredi termin</DialogTitle>
+        <DialogContent
+          sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          <TextField
+            autoFocus
+            label="Ime *"
+            fullWidth
+            value={newClientForm.name}
+            onChange={(e) =>
+              setNewClientForm({ ...newClientForm, name: e.target.value })
+            }
+            placeholder="Unesite ime klijenta"
+            disabled
+          />
+          <DatePicker
+            label="Datum"
+            value={appointmentDate}
+            onChange={(newValue) => {
+              setAppointmentDate(newValue);
+              setAppointmentTime("");
+            }}
+          />
+          <FormControl fullWidth>
+            <InputLabel>Vrijeme</InputLabel>
+            <Select
+              label="Vrijeme"
+              value={appointmentTime}
+              onChange={(e) => setAppointmentTime(e.target.value)}
+            >
+              {getAvailableTimeSlotsForDate(
+                appointmentDate,
+                selectedAppointment,
+              ).map((time) => (
+                <MenuItem key={time} value={time}>
+                  {time}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAppointmentDialogClose}>Otkaži</Button>
+          <Button
+            onClick={handleEditAppointment}
             variant="contained"
             disabled={!newClientForm.name.trim()}
           >
