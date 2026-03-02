@@ -2,6 +2,7 @@ import "./App.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Scheduler } from "./pages/Scheduler";
 import { Login } from "./pages/Login";
+import { ClientDetails } from "./pages/ClientDetails";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -30,6 +31,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <Scheduler />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/clients/:clientId"
+              element={
+                <PrivateRoute>
+                  <ClientDetails />
                 </PrivateRoute>
               }
             />

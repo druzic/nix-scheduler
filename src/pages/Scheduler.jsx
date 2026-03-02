@@ -19,12 +19,15 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabase";
 
 export function Scheduler() {
+  const navigate = useNavigate();
   const [selectedService, setSelectedService] = React.useState("");
   const [selectedDate, setSelectedDate] = React.useState(dayjs(new Date()));
   const [selectedClient, setSelectedClient] = React.useState("");
+  const [searchClient, setSearchClient] = React.useState(null);
   const [selectedTime, setSelectedTime] = React.useState("");
   const [appointments, setAppointments] = React.useState([]);
   const [openDialog, setOpenDialog] = React.useState(false);
@@ -141,11 +144,6 @@ export function Scheduler() {
 
   const handleAppointmentDialogOpen = (appointment) => {
     setSelectedAppointment(appointment);
-    const client = clients.find((c) => c.id === appointment.client_id);
-    setNewClientForm({
-      ...newClientForm,
-      name: client?.name || "",
-    });
     setAppointmentDate(dayjs(appointment.date, "DD-MM-YYYY"));
     setAppointmentTime(appointment.time);
     setAppointmentOpenDialog(true);
@@ -202,10 +200,37 @@ export function Scheduler() {
 
   const handleEditAppointment = async () => {
     console.log("Radim update");
+    console.log(selectedAppointment);
+    const { data, error } = await supabase
+      .from("appointments")
+      .update({
+        date: appointmentDate.format("DD-MM-YYYY"),
+        time: appointmentTime,
+      })
+      .match({ id: selectedAppointment.id });
+    handleAppointmentDialogClose();
   };
 
   return (
     <Box sx={{ p: 2 }}>
+      <Box sx={{ mb: 2, maxWidth: 420 }}>
+        <Autocomplete
+          options={clients}
+          value={searchClient}
+          getOptionLabel={(option) => option.name || ""}
+          getOptionKey={(option) => option.id}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          onChange={(event, newValue) => {
+            setSearchClient(newValue);
+            if (newValue?.id) {
+              navigate(`/clients/${newValue.id}`);
+            }
+          }}
+          renderInput={(params) => (
+            <TextField {...params} label="Pretraga klijenta" />
+          )}
+        />
+      </Box>
       <h1>Unos termina</h1>
       <div>
         <Box sx={{ display: "flex", flexDirection: "row", gap: 1, mb: 2 }}>
@@ -214,6 +239,7 @@ export function Scheduler() {
             disablePortal
             options={clients}
             getOptionLabel={(option) => option.name || ""}
+            getOptionKey={(option) => option.id}
             value={clients.find((c) => c.id === selectedClient) || null}
             inputValue={inputValue}
             onInputChange={(event, newInputValue) =>
@@ -454,9 +480,9 @@ export function Scheduler() {
             autoFocus
             label="Ime *"
             fullWidth
-            value={newClientForm.name}
-            onChange={(e) =>
-              setNewClientForm({ ...newClientForm, name: e.target.value })
+            value={
+              clients.find((c) => c.id === selectedAppointment?.client_id)
+                ?.name || ""
             }
             placeholder="Unesite ime klijenta"
             disabled
@@ -488,13 +514,9 @@ export function Scheduler() {
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleAppointmentDialogClose}>Otkaži</Button>
-          <Button
-            onClick={handleEditAppointment}
-            variant="contained"
-            disabled={!newClientForm.name.trim()}
-          >
-            Dodaj
+          <Button onClick={handleAppointmentDialogClose}>Odustani</Button>
+          <Button variant="contained" onClick={handleEditAppointment}>
+            Promijeni
           </Button>
         </DialogActions>
       </Dialog>
